@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Rect Switch</title>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="rectangle.js"></script>
+</head>
+<body>
+<script type="text/javascript">
+
+//switchRect(10,25);
+var transactionTime=1000;
+
+
+var rectangle1 = new rectangle(0,10,50,200);
+var rectangle2 = new rectangle(50,10,100,200);
+var rectangle3 = new rectangle(150,10,80,200);
+var rectangle4 = new rectangle(230,10,120,200);
+var rectangle5 = new rectangle(350,10,100,200);
+var rectangle6 = new rectangle(450,10,120,200);
+var rectangleList=[];
+rectangleList.push(rectangle1);
+rectangleList.push(rectangle2);
+rectangleList.push(rectangle3);
+rectangleList.push(rectangle4);
+rectangleList.push(rectangle5);
+rectangleList.push(rectangle6);
+
+
+/*var jsonRectangles = [
+{ "x_axis": 10, "y_axis": 10, "height": 20, "width":20, "color" : "green" },
+{ "x_axis": 40, "y_axis": 40, "height": 20, "width":20, "color" : "purple" },
+{ "x_axis": 70, "y_axis": 70, "height": 20, "width":20, "color" : "red" }];
+*/
+var lineFunction = d3.svg.line()
+  .x(function (d) {
+    return d.x; })
+  .y(function (d) {
+    return d.y; })
+  .interpolate("linear");
+
+var svg = d3.select("body").append("svg").attr("width", 1000).attr("height", 1000);
+
+//li disegno tutti
+var rectangles = svg.selectAll("rect")
+.data(rectangleList)
+.enter()
+.append("rect");
+
+
+var color= d3.scale.category10();
+
+
+//imposto i valori per disegnarli
+var rectangleAttributes = rectangles
+.attr("x", function (d) { return d.x; })
+.attr("y", function (d) { return d.y; })
+.attr("height", function (d) { return d.height; })
+.attr("width", function (d) { return d.width; })
+.style("stroke", function(d) {return "black"; })
+.style("stroke-width", function(d) {return 2; })
+//.style("fill", function(d) {return d.color; });
+.style("fill", function(d) {return color(d); });
+
+//problema di come vengono disegnati quello che si muove deve essere sopra a tutti quindi viene reinserito in coda
+d3.selection.prototype.moveToFront = function() {
+  return this.each(function(){
+    this.parentNode.appendChild(this);
+  });
+};
+
+//bisogna valutare come applicare la transazioni in cascata oppure se prendere l'array ed eseguirle in un for
+move2rectangle(0,rectangleList.length);
+function move2rectangle(a,b){
+	var r1=d3.select(rectangles[0][a]);//The first [0] is there to handle d3 groupings, but since you're not doing that, it will always be 0. The second [0] is the specific node you're interested in.
+
+	r1.moveToFront();
+
+counter=a;
+	repeat();
+
+function repeat() {
+console.log(r1.attr("x")+" counter: "+counter);
+	var r2=d3.select(rectangles[0][counter+1]);
+	var totalWidth=+r1.attr("width")+ +r2.attr("width");
+	var height = +r1.attr("height");
+	var area1 = +r1.attr("width")* +r1.attr("height");
+	var area2 = +r2.attr("width")* +r2.attr("height");
+	var areaRatio = area2/area1;
+	var heightDiv = (height / (area1 + area2)) * area1;
+
+	r2
+	.transition().duration(10).ease("linear").attr("x", function(d) {return +r1.attr("x"); })
+	.attr("width", function(d) {return totalWidth; })
+	.transition().delay(transactionTime*2).ease("linear").attr("width", function(d) {return d.width; });
+
+	r1
+	.transition().duration(transactionTime).ease("linear").attr("width", function(d) {return totalWidth; })
+	.attr("height", function(d) {return heightDiv; })
+	.transition().duration(transactionTime).ease("linear").attr("x", function(d) {
+		d.x=d.x-d.width+totalWidth;//per farlo spostare devo aggiornare la x
+		return d.x; })
+	.attr("width", function(d) {return d.width; })
+	.attr("height", function(d) {return d.height; })
+	.each("end",  function() {
+		counter++;
+		if(counter<b-1){
+			return repeat();
+		}
+		else
+			return;
+	});
+
+
+    }
+
+
+	/*var r2=d3.select(rectangles[0][b]);
+
+
+	r1.moveToFront();
+	r1
+	.transition().duration(transactionTime).ease("linear").attr("width", function(d) {return d.width*2; })
+	.attr("height", function(d) {return d.height/2; })
+	.transition().duration(transactionTime).ease("linear").attr("x", function(d) {
+		d.x=d.x+d.width;//per farlo spostare devo aggiornare la x
+		return d.x; })
+	.attr("width", function(d) {return d.width; })
+	.attr("height", function(d) {return d.height; });
+// non capisco se poi devo reimpostare la x e la y poichè cambia posizione a quanto pare NO
+	//r1.attr("x",100);
+
+	console.log(r1.attr("x"));
+
+	r2
+	.transition().duration(10).ease("linear").attr("x", function(d) {return 0; })
+	.attr("width", function(d) {return d.width*2; })
+	.transition().delay(transactionTime*2).ease("linear").attr("width", function(d) {return d.width; });
+	//.attr("width", function(d) {return d.width; })
+	//.attr("height", function(d) {return d.height; });
+
+	r1
+	.transition().delay(transactionTime*2).duration(transactionTime).ease("linear").attr("width", function(d) {return d.width*2; })
+	.attr("height", function(d) {return d.height/2; })
+	.transition().duration(transactionTime).ease("linear").attr("x", function(d) {
+		d.x=d.x+d.width;
+		return d.x; })
+	.attr("width", function(d) {return d.width; })
+	.attr("height", function(d) {return d.height; });
+*/
+}
+
+
+//drawAllRectangles(rectangleList);
+function drawAllRectangles(rectangleList){
+	var name="rect";
+	for(var i=0; i<rectangleList.length; i++){
+		var nomeRect = name+i;
+		var nomeRect = svg.append("path")
+		.attr("d", lineFunction(rectangleList[i].rectData))
+		.attr("fill", "green");
+	}
+	switchRectangleInList(rectangleList);
+}
+
+
+
+//commentato tutto-------------------------------------------
+//switchRectangle(rectangleList[1],rectangleList[2]);
+
+function switchRectangleInList(rectangleList) {
+	console.log("prima: "+rectangleList[0].toString());
+	switchRectangle(rectangleList[0],rectangleList[1]);
+	var rectangleTemp = rectangleList[0];
+	rectangleList[0] = rectangleList[1];
+	rectangleList[1] = rectangleTemp;
+	console.log("dopo: "+rectangleList[0].toString());
+
+}
+
+
+function switchRectangle(rect1, rect2) {
+
+var width1 = rect1.width; // fissa
+var height = rect1.height;
+var area1 = rect1.area;
+var area2 = rect2.area;
+var areaRatio = area2/area1;
+var width2 = width1 * areaRatio;
+var widthTot = width1 + width2;
+var heightDiv = (height / (area1 + area2)) * area1;
+
+var lu = rect1.leftUp;
+var ld = rect1.leftDown;
+var cu = rect1.rightUp;
+var cd = rect1.rightDown;
+var ru = rect2.rightUp;
+var rd = rect2.rightDown;
+var cu2 = { "x": widthTot-cu.x, "y": 0};
+var cd2 = { "x": widthTot-cu.x, "y": height};
+
+var lm = { "x": 0, "y": heightDiv};
+var rm = { "x": widthTot, "y": heightDiv};
+
+var rectData1 = [lu,cu,cd,ld];
+var intermediateRect1 = [lu,ru,rm,lm];
+var rect2Data1 = [cu2,ru,rd,cd2];
+
+var rectData2 = [cu,ru,rd,cd];
+var rect2Data2 = [lu,cu2,cd2,ld];
+var fillArea2 = [lu,ru,rd,ld];
+
+var t1 = 1000;
+var t2 = 40;
+var delay =t1*2;
+
+var shape2 = svg.append("path")
+.attr("d", lineFunction(rectData2))
+.attr("fill", "red");
+
+var shape1 = svg.append("path")
+.attr("d", lineFunction(rectData1))
+.attr("fill", "blue");
+
+shape1
+.transition().duration(t1).ease("linear").attr("d",lineFunction(intermediateRect1))
+.transition().duration(t1).ease("linear").attr("d",lineFunction(rect2Data1));
+
+shape2
+.transition().duration(10).ease("linear").attr("d",lineFunction(fillArea2))
+.transition().duration(t1).ease("linear").delay(delay).attr("d",lineFunction(rect2Data2));
+
+
+
+}
+
+
+
+</script>
+</body>
+</html>

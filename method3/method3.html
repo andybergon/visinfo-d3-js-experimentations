@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Rect turning</title>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="rectangle.js"></script>
+</head>
+<body>
+<div id="chart"></div>
+<script type="text/javascript">
+
+
+var transactionTime=1000;
+//var shortTransactionTime=transactionTime/2;
+var transactionTimMovePoint=100;
+//var delayTime=shortTransactionTime*4+transactionTime+transactionTimMovePoint*2;
+
+/*
+var rectangle1 = new rectangle(0,0,100,100,"red");
+var rectangle2 = new rectangle(100,0,50,100,"blue");
+var rectangle3 = new rectangle(150,0,150,100,"green");
+var rectangle4 = new rectangle(0,100,100,100,"red");
+var rectangle5 = new rectangle(100,100,50,100,"blue");
+var rectangle6 = new rectangle(150,100,150,100,"green");
+*/
+var rectangle1 = new rectangle(0,0,100,100,"rgb(31, 119, 180)");
+var rectangle2 = new rectangle(100,0,50,100,"rgb(44, 160, 44)");
+var rectangle3 = new rectangle(150,0,150,100,"rgb(214, 39, 40)");
+var rectangle4 = new rectangle(0,100,100,100,"rgb(31, 119, 180)");
+var rectangle5 = new rectangle(100,100,50,100,"rgb(44, 160, 44)");
+var rectangle6 = new rectangle(150,100,150,100,"rgb(214, 39, 40)");
+var rectangleList=[];
+var rectangleListDown=[];
+rectangleList.push(rectangle1);
+rectangleList.push(rectangle2);
+rectangleList.push(rectangle3);
+rectangleListDown.push(rectangle4);
+rectangleListDown.push(rectangle5);
+rectangleListDown.push(rectangle6);
+
+var svg = d3.select("body").append("svg").attr("width", 1000).attr("height", 1000);
+
+var rectangles = svg.selectAll("path")
+.data(rectangleList)
+.enter()
+.append("path");
+
+var rectanglesDown = svg.selectAll("path2")
+.data(rectangleListDown)
+.enter()
+.append("path");
+
+var color= d3.scale.category10();
+
+//imposto i valori per disegnarli
+var rectangleAttributes = rectangles
+.attr("d", function (d) { return d.line; })
+//.style("stroke", function(d) {return "black"; })
+//.style("stroke-width", function(d) {return 1; })
+//.style("fill", function(d) {return color(d); });
+.style("fill", function(d) {return d.color; });
+
+var rectangleAttributesDown = rectanglesDown
+.attr("d", function (d) { return d.line; })
+//.style("stroke", function(d) {return "black"; })
+//.style("stroke-width", function(d) {return 1; })
+//.style("fill", function(d) {return color(d); });
+.style("fill", function(d) {return d.color; });
+
+//var r1=d3.select(rectangles[0][0]);
+//console.log("r1attr "+r1.attr("d"));
+
+d3.selection.prototype.moveToFront = function() {
+  return this.each(function(){
+    this.parentNode.appendChild(this);
+  });
+};
+
+move2rectangle(0,rectangleList,rectangles,true);
+move2rectangle(0,rectangleListDown,rectanglesDown,false);
+function move2rectangle(initialElement,list,rectangles,isUp){
+var	endingElement = list.length;
+var counter=initialElement;
+	repeat();
+
+function repeat() {
+	var r1=d3.select(rectangles[0][initialElement]);//The first [0] is there to handle d3 groupings, but since you're not doing that, it will always be 0. The second [0] is the specific node you're interested in.
+	//console.log("r1.line: "+r1.attr("d"));
+
+//console.log(r1.attr("x")+" counter: "+counter);
+	var r2=d3.select(rectangles[0][counter+1]);
+	var width1=+rectangleList[initialElement].width;
+	var width2=+rectangleList[counter+1].width;
+	var totalWidth=+rectangleList[initialElement].width+ +rectangleList[counter+1].width;
+	//var totalWidth=+r1.attr("width")+ +r2.attr("width");
+	var height = +rectangleList[initialElement].height;
+	var area1 = +rectangleList[initialElement].width* +rectangleList[initialElement].height;
+	var area2 = +rectangleList[counter+1].width* +rectangleList[counter+1].height;
+	var previousAreaSmaller=true;
+	if(area1>area2){
+		previousAreaSmaller=false;
+	}
+	var areaRatio = area2/area1;
+	var heightDiv = (height / (area1 + area2)) * area1;
+	var heightDivInverse = (height / (area1 + area2)) * area2;
+	var triangleBase = 2*area1/height;
+	var triangleBaseInverse = 2*area2/height;
+	var triangleHeight = 2*area1/totalWidth;
+	var trapezioBaseMinore=Math.abs((area2*2-totalWidth*height)/height);
+	var trapezioBaseMinore2=Math.abs((area2*2-totalWidth*height)/totalWidth);
+	var shortTransactionTime=transactionTime*width1/height;
+	var delayTime=shortTransactionTime*4+transactionTime+transactionTimMovePoint*2-20;
+if(isUp){
+	if(previousAreaSmaller){
+		r1.moveToFront();
+		r2
+		.transition().duration(10).ease("linear").attr("d", function(d) {
+			d.expandSecondRectangle((totalWidth-d.width));return d.line; })
+		.transition().delay(delayTime).ease("linear").attr("d", function(d) {d.lastRectangle(-width1);return d.line; });
+
+		r1
+		.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.setFirstTriangleUp(triangleBase); return d.line; })
+		.transition().duration(transactionTimMovePoint).ease("linear").attr("d", function(d) {d.setFirstPointBackUp(triangleBase); return d.line; })
+		.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.setSecondTriangleUp(totalWidth,triangleHeight); return d.line; })
+		//.transition().duration(transactionTime).ease("linear").attr("d", function(d) {d.setTopRectangle(totalWidth,heightDiv); return d.line; })
+		.transition().duration(transactionTime).ease("linear").attr("d", function(d) {d.setThirdTriangleUp(totalWidth,triangleHeight); return d.line; })
+		.transition().duration(transactionTimMovePoint).ease("linear").attr("d", function(d) {d.setSecondPointBackUp(totalWidth,triangleHeight); return d.line; })
+		.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.setFourthTriangleUp((totalWidth-triangleBase),totalWidth); return d.line; })
+		.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.lastRectangle((totalWidth- +rectangleList[initialElement].width)); return d.line; })
+		.each("end",  function() {
+			counter++;
+			if(counter<endingElement-1){
+				 repeat();
+			}
+			else{
+				return;
+			}
+		});
+	}
+	else{
+		r2.moveToFront();
+		console.log("else");
+		r1
+		.transition().duration(10).ease("linear").attr("d", function(d) {
+			d.expandFirstRectangle((totalWidth));return d.line; })
+		.transition().delay(delayTime).ease("linear").attr("d", function(d) {d.lastRectangle(width2);return d.line; });
+
+		r2
+		.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.setFirstInverseTriangleUp(-triangleBaseInverse); return d.line; })
+		.transition().duration(transactionTimMovePoint).ease("linear").attr("d", function(d) {d.setFirstInversePointBackUp(-triangleBaseInverse); return d.line; })
+		.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.setSecondInverseTriangleUp(totalWidth,trapezioBaseMinore); return d.line; })
+		.transition().duration(transactionTime).ease("linear").attr("d", function(d) {d.setThirdInverseTriangleUp(totalWidth,heightDivInverse); return d.line; })
+		.transition().duration(transactionTimMovePoint).ease("linear").attr("d", function(d) {d.setSecondInversePointBackUp(totalWidth,heightDivInverse); return d.line; })
+		.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.setFourthInverseTriangleUp(totalWidth,triangleBaseInverse,heightDivInverse); return d.line; })
+		.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.lastRectangle(-width1); return d.line; })
+		.each("end",  function() {
+			counter++;
+			if(counter<endingElement-1){
+				 repeat();
+			}
+			else{
+				return;
+			}
+		});
+	}
+
+    }//-----------------------------------------------------------Down
+    else{
+	if(previousAreaSmaller){
+		r1.moveToFront();
+		r2
+		.transition().duration(10).ease("linear").attr("d", function(d) {
+			d.expandSecondRectangle((totalWidth-d.width));return d.line; })
+		.transition().delay(delayTime).ease("linear").attr("d", function(d) {d.lastRectangle(-width1);return d.line; });
+
+		r1
+		.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.setFirstTriangle(triangleBase); return d.line; })
+		.transition().duration(transactionTimMovePoint).ease("linear").attr("d", function(d) {d.setFirstPointBack(triangleBase); return d.line; })
+		.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.setSecondTriangle(totalWidth,triangleHeight); return d.line; })
+		//.transition().duration(transactionTime).ease("linear").attr("d", function(d) {d.setTopRectangle(totalWidth,heightDiv); return d.line; })
+		.transition().duration(transactionTime).ease("linear").attr("d", function(d) {d.setThirdTriangle(totalWidth,triangleHeight); return d.line; })
+		.transition().duration(transactionTimMovePoint).ease("linear").attr("d", function(d) {d.setSecondPointBack(totalWidth,triangleHeight); return d.line; })
+		.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.setFourthTriangle((totalWidth-triangleBase),totalWidth); return d.line; })
+		.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.lastRectangle((totalWidth- +rectangleList[initialElement].width)); return d.line; })
+		.each("end",  function() {
+			counter++;
+			if(counter<endingElement-1){
+				 repeat();
+			}
+			else{
+				return;
+			}
+		});
+	}
+	else{
+		r2.moveToFront();
+		console.log("else");
+		r1
+		.transition().duration(10).ease("linear").attr("d", function(d) {
+			d.expandFirstRectangle((totalWidth));return d.line; })
+		.transition().delay(delayTime).ease("linear").attr("d", function(d) {d.lastRectangle(width2);return d.line; });
+
+		r2
+		.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.setFirstInverseTriangle(-triangleBaseInverse); return d.line; })
+		.transition().duration(transactionTimMovePoint).ease("linear").attr("d", function(d) {d.setFirstInversePointBack(-triangleBaseInverse); return d.line; })
+		.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.setSecondInverseTriangle(totalWidth,trapezioBaseMinore); return d.line; })
+		.transition().duration(transactionTime).ease("linear").attr("d", function(d) {d.setThirdInverseTriangle(totalWidth,heightDivInverse); return d.line; })
+		.transition().duration(transactionTimMovePoint).ease("linear").attr("d", function(d) {d.setSecondInversePointBack(totalWidth,heightDivInverse); return d.line; })
+		.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.setFourthInverseTriangle(totalWidth,triangleBaseInverse,heightDivInverse); return d.line; })
+		.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.lastRectangle(-width1); return d.line; })
+		.each("end",  function() {
+			counter++;
+			if(counter<endingElement-1){
+				 repeat();
+			}
+			else{
+				return;
+			}
+		});
+	}
+
+    }
+}
+}
+
+//The data for our line
+/*
+var rectData2 = rectangle2;//"M100,0 L200,0 L200,500 L200,500 L100,500 L100,500 L100,0";
+var triangleData2 = "M200,0 L200,0 L200,500  L0,500 L0,500 L0,500 L200,0";
+var intermediateRect2 = "M200,250 L200,250 L200,500 L0,500 L0,250 L0,250 L200,250";
+var triangle2Data2 = "M200,500 L200,500 L200,500 L0,500 L0,0 L0,0 L200,500";
+var rect2Data2 = "M100,500 L100,500 L100,500 L0,500 L0,0 L100,0 L100,500";
+
+var rectData1 =	rectangle1;//	"M0,0 L100,0 L100,200 L0,200";
+var triangleData1 =	"M0,0 L200,0 L0,200 L0,200";
+var moveAngle1 = 	"M0,0 L200,0 L200,0 L0,200";
+var intermediateRect1 = "M0,0 L200,0 L200,100 L0,100";
+var triangle2Data1 = "M0,0 L200,0 L200,200 L0,0";
+var moveAngle2 = 	"M0,0 L200,0 L200,200 L200,200";
+var rect2Data1 = "M100,0 L200,0 L200,200 L100,200";
+
+var shape1 = svg.append("path")
+.attr("d", rectData1)
+.attr("fill", "blue")
+shape1.transition().duration(2000).attr("d",triangleData1).ease("linear")
+.transition().duration(100).attr("d",moveAngle1).ease("linear")
+.transition().duration(2000).attr("d",intermediateRect1).ease("linear")
+.transition().duration(2000).attr("d",triangle2Data1).ease("linear")
+.transition().duration(100).attr("d",moveAngle2).ease("linear")
+.transition().duration(2000).attr("d",rect2Data1).ease("linear");*/
+/*
+.attrTween("fill", function() {
+  //return d3.interpolateRgb(this.getAttribute("fill"), "red");
+   return d3.interpolateString("d",triangleData);
+});*/
+/*var shape2 = svg.append("path")
+.attr("d", rectData2)
+.attr("fill", "red")
+shape2.transition().duration(2000)
+.attr("d",triangleData2).transition().duration(2000)
+.attr("d",intermediateRect2).transition().duration(2000)
+.attr("d",triangle2Data2).transition().duration(2000)
+.attr("d",rect2Data2);
+*/
+
+/*var lineGraph = svg.append("path")
+.attr("d", triangleData)
+.attr("stroke", "red")
+.attr("stroke-width", 2)
+.attr("fill", "red");*/
+
+
+</script>
+</body>
+</html>

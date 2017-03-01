@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Rect turning</title>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="rectangleNode.js"></script>
+</head>
+<body>
+<div id="chart"></div>
+<script type="text/javascript">
+
+d3.selection.prototype.moveToFront = function() {
+  return this.each(function(){
+    this.parentNode.appendChild(this);
+  });
+};
+
+d3.selection.prototype.moveToBack = function() {
+    return this.each(function() {
+        var firstChild = this.parentNode.firstChild;
+        if (firstChild) {
+            this.parentNode.insertBefore(this, firstChild);
+        }
+    });
+};
+
+var w = 1000;
+var h = 1000;
+var mouseX;
+var twoPositionsMouseX=[];
+var twoSelectedElements=[];
+var svg = d3.select("body").append("svg").attr("width", w).attr("height", h);
+
+var transactionTime=1000;
+//var shortTransactionTime=transactionTime/2;
+var transactionTimMovePoint=100;
+//var delayTime=shortTransactionTime*4+transactionTime+transactionTimMovePoint*2;
+
+
+var rectangle0 = new rectangle(0,"transparent","id-0");
+
+var rectangle1 = new rectangle(0,"transparent","id-1");
+var rectangle2 = new rectangle(0,"transparent","id-2");
+rectangle0.listChild.push(rectangle1);
+rectangle0.listChild.push(rectangle2);
+
+var rectangle3 = new rectangle(0,"transparent","id-3");
+var rectangle4 = new rectangle(7,"grey","id-4");
+rectangle1.listChild.push(rectangle3);
+rectangle1.listChild.push(rectangle4);
+
+var rectangle5 = new rectangle(0,"transparent","id-5");
+var rectangle6 = new rectangle(3,"brown","id-6");
+rectangle2.listChild.push(rectangle5);
+rectangle2.listChild.push(rectangle6);
+
+var rectangle7 = new rectangle(1,"purple","id-7");
+var rectangle8 = new rectangle(2,"blue","id-8");
+var rectangle9 = new rectangle(2,"lightblue","id-9");
+rectangle3.listChild.push(rectangle7);
+rectangle3.listChild.push(rectangle8);
+rectangle3.listChild.push(rectangle9);
+
+var rectangle10 = new rectangle(1,"red","id-10");
+var rectangle11 = new rectangle(3,"orange","id-11");
+var rectangle12 = new rectangle(2,"yellow","id-12");
+rectangle5.listChild.push(rectangle10);
+rectangle5.listChild.push(rectangle11);
+rectangle5.listChild.push(rectangle12);
+
+
+
+var newRectangleList=[]; // no serve più
+var oldRectangleList=[];
+var rectangles;
+
+rectangle0.x=0;
+rectangle0.y=0;
+rectangle0.width=w;
+rectangle0.height=h;
+// rectangle0.id = "id-1";
+
+calculate(rectangle0,w*h,true);
+oldRectangleList = pushRectangles(oldRectangleList);
+drawRectangles(oldRectangleList);
+//console.log(oldRectangleList, newRectangleList);
+//cloneArray(oldRectangleList, newRectangleList);
+
+//provaTransizione();
+
+
+// move2rectangle(7,9,oldRectangleList);
+// move2rectangleById("id-1111","id-1212",oldRectangleList);
+
+
+
+function calculate(node,area,vertical) {
+	calculateWeigths(node);
+	childArea(node,area,vertical);
+	calculateAttributes(node);
+}
+
+function calculateWeigths(node) {
+	if(node.listChild.length==0){
+		return node.weight;
+	} else {
+		var sum =  node.listChild.reduce(function(a,b) {
+			return a + calculateWeigths(b);
+		}, 0);
+		node.weight = sum;
+		return sum;
+	}
+
+}
+
+function childArea(node,area,vertical){
+	node.vertical = vertical;
+	node.area = area;
+
+	if(node.listChild.length!=0){
+		var sum = node.listChild.reduce(function(a,b) {return a + b.weight; }, 0);
+		node.listChild.map(function(e){
+			e.area = area*e.weight/sum;
+			childArea(e, e.area, !vertical);
+		});
+	}
+}
+
+function calculateAttributes(node) {
+	if (node.listChild.length!=0) {
+		if (node.vertical) {
+			var xOffset = node.x;
+			for (var i = 0; i < node.listChild.length; i++) {
+				node.listChild[i].width = node.width * (node.listChild[i].area/node.area);
+				node.listChild[i].height = node.height;
+				node.listChild[i].x = xOffset;
+				node.listChild[i].y = node.y;
+				xOffset += node.listChild[i].width;
+				node.listChild[i].parent = node;
+				// node.listChild[i].id = node.id + (i+1);
+				calculateAttributes(node.listChild[i]);
+			}
+		} else {
+			var yOffset = node.y;
+			for (var i = 0; i < node.listChild.length; i++) {
+				node.listChild[i].width = node.width;
+				node.listChild[i].height = node.height * (node.listChild[i].area/node.area);
+				node.listChild[i].x = node.x;
+				node.listChild[i].y = yOffset;
+				yOffset += node.listChild[i].height;
+				node.listChild[i].parent = node;
+				// node.listChild[i].id = node.id + (i+1);
+				calculateAttributes(node.listChild[i]);
+			}
+		}
+		// console.log(node);
+	}
+}
+
+
+function provaTransizione(){
+	moveChild(rectangle3,0,rectangle5);
+	calculate(rectangle0,w*h,true);
+
+	oldRectangleList = pushRectangles(oldRectangleList);
+	drawRectangles(oldRectangleList);
+	transitionAll(oldRectangleList);
+}
+
+
+function setRectanglePath(rectangleList){
+	rectangleList.forEach(r => r.setPath());
+}
+
+function pushRectangles(rectangleList){
+
+	rectangleList = [];
+	// console.log(rectangleList.length);
+	rectangleList.push(rectangle0);
+	rectangleList.push(rectangle1);
+	rectangleList.push(rectangle2);
+	rectangleList.push(rectangle3);
+	rectangleList.push(rectangle4);
+	rectangleList.push(rectangle5);
+	rectangleList.push(rectangle6);
+	rectangleList.push(rectangle7);
+	rectangleList.push(rectangle8);
+	rectangleList.push(rectangle9);
+	rectangleList.push(rectangle10);
+	rectangleList.push(rectangle11);
+	rectangleList.push(rectangle12);
+	// console.log(rectangleList.length);
+	setRectanglePath(rectangleList);
+
+	return rectangleList;
+}
+
+function transitionAll(oldArray){
+	svg.selectAll("path")
+		.data(oldArray)
+		.style("fill", function(d) {return d.color; })
+		.transition().duration(1000)
+		.ease("linear").attr("d", function(d) {
+			return d.line;
+		});
+
+}
+
+function sameParentById(id1, id2, rectangleList) {
+  var parent1, parent2;
+
+  for (var i = 0; i<rectangleList.length; i++) {
+  	var rectangle = rectangleList[i];
+    if (rectangle.id == id1) {
+    	parent1 = rectangle.parent;
+    }
+    if (rectangle.id == id2) {
+    	parent2 = rectangle.parent;
+    }
+  }
+
+  return parent1 == parent2;
+}
+
+function drawRectangles(rectangleList){
+
+	rectangles = svg.selectAll("path")
+		.data(rectangleList)
+		.enter()
+		.append("path")
+		.attr("id", function (d) { return d.id; })
+		.attr("parent", function (d) { return d.parent; })
+		.attr("d", function (d) { return d.line; })
+		.style("fill", function(d) { return d.color; })
+		.on("click", function(d) {
+			mouseX = d3.mouse(this)[0];
+
+			if(twoPositionsMouseX.length == 1) {
+				twoPositionsMouseX[1]=mouseX;
+				twoSelectedElements[1]=d3.select("#"+d.id).attr("id");
+				//console.log(twoPositionsMouseX);
+				console.log("moving 2 rects: ", twoSelectedElements[0],twoSelectedElements[1]);
+
+				if (sameParentById(twoSelectedElements[0],twoSelectedElements[1],rectangleList)) {
+					alert("Cannot swap elements in the same parent by requirements!");
+				} else {
+					move2rectangleById(twoSelectedElements[0],twoSelectedElements[1],oldRectangleList);
+				}
+
+			} else if(twoPositionsMouseX.length==0 || twoPositionsMouseX.length==2) {
+				//twoPositionsMouseX = [];
+				//twoSelectedElements = [];
+				twoPositionsMouseX[0]=mouseX;
+				twoSelectedElements[0]=d3.select("#"+d.id).attr("id");
+				twoPositionsMouseX.splice(1, 1);
+				twoSelectedElements.splice(1, 1);
+			} else {
+				alert("error in position array management!");
+			}
+
+			console.log(twoPositionsMouseX,twoSelectedElements);
+
+			//corrisponde all'elemento r1 che scambiamo quindi basta passarlo
+			// console.log(twoSelectedElements[0].attr("d"));
+	});
+
+/*
+	var color= d3.scale.category10();
+
+	var rectangleAttributes = rectangles
+		.attr("d", function (d) { return d.line; })
+		//.style("stroke", function(d) {return "black"; })
+		//.style("stroke-width", function(d) {return 1; })
+		//.style("fill", function(d) {return color(d); });
+		.style("fill", function(d) {return d.color; });
+*/
+}
+
+function setAsLastChild(father,nodeIndex){
+	var el = father.listChild.splice(nodeIndex,1);
+	father.listChild.push(el[0]);
+}
+
+function moveChild(father,nodeIndex,newFather){
+	//console.log(father.listChild[nodeIndex]);
+	var el = father.listChild.splice(nodeIndex,1);
+	newFather.listChild.splice(0,0,el[0]);
+	//console.log(newFather.listChild[0]);
+
+	rectangle0.color=el[0].color;
+	el[0].color="transparent";
+}
+
+function moveChildById(parentId,nodeId,newLeftSiblingId,rectangleList){
+  var parent, newParent, newLeftSibling, newParentId;
+
+  for (var i = 0; i<rectangleList.length; i++) {
+  	var rectangle = rectangleList[i];
+    if (rectangle.id == parentId) {
+    	parent = rectangle;
+    }
+    if (rectangle.id == newLeftSiblingId) {
+    	newLeftSibling = rectangle;
+    }
+  }
+
+  // var positionInNewParent = newLeftSiblingId.substr(newLeftSiblingId.length-1);
+  newParentId = newLeftSibling.parent.id;
+
+  for (var i = 0; i<rectangleList.length; i++) {
+  	var rectangle = rectangleList[i];
+    if (rectangle.id == newParentId) {
+    	newParent = rectangle;
+    }
+  }
+
+  console.log("parent and new parent id: ", parentId, newParentId);
+
+	var el = parent.listChild.splice(parent.listChild.length-1,1); // levo ultimo elemento
+	newParent.listChild.splice(0,0,el[0]); // mette come primo elemento
+	//console.log(newParent.listChild);
+
+	if (parent.listChild.length == 0) {
+		parent.weight = 0;
+	}
+
+	el[0].parent = newParent;
+
+	rectangle0.color=el[0].color;
+	el[0].color="transparent";
+
+	return rectangle0.color;
+}
+
+function moveChildByIdInverse(parentId,nodeId,newLeftSiblingId,rectangleList){
+  var parent, newParent, newLeftSibling, newParentId;
+
+  for (var i = 0; i<rectangleList.length; i++) {
+  	var rectangle = rectangleList[i];
+    if (rectangle.id == parentId) {
+    	parent = rectangle;
+    }
+    if (rectangle.id == newLeftSiblingId) {
+    	newLeftSibling = rectangle;
+    }
+  }
+
+  // var positionInNewParent = newLeftSiblingId.substr(newLeftSiblingId.length-1);
+  newParentId = newLeftSibling.parent.id;
+
+  for (var i = 0; i<rectangleList.length; i++) {
+  	var rectangle = rectangleList[i];
+    if (rectangle.id == newParentId) {
+    	newParent = rectangle;
+    }
+  }
+
+  console.log("(inverse) parent and new parent id: ", parentId, newParentId);
+
+  // console.log("old parent child - before: ");
+  // parent.listChild.map(a => console.log(a.color));
+
+	var el = parent.listChild.splice(0,1); // levo primo elemento
+
+  // console.log("old parent child - after: ");
+  // parent.listChild.map(a => console.log(a.color));
+
+	// console.log("new parent child - before: ");
+	// newParent.listChild.map(a => console.log(a.color));
+
+	newParent.listChild.splice(newParent.listChild.length,0,el[0]); // mette come ultimo elemento
+
+	// console.log("new parent child - after: ");
+  // newParent.listChild.map(a => console.log(a.color));
+
+	if (parent.listChild.length == 0) {
+		parent.weight = 0;
+	}
+
+	el[0].parent = newParent;
+
+	rectangle0.color=el[0].color;
+	el[0].color="transparent";
+
+	return rectangle0.color;
+}
+
+function changeColorById(siblingId,color,rectangleList) {
+	var sibling;
+
+	for (var i = 0; i < rectangleList.length; i++) {
+  	var rectangle = rectangleList[i];
+  	// console.log(rectangle.id);
+    if (rectangle.id == siblingId) {
+    	sibling = rectangle;
+    }
+  }
+
+	sibling.parent.listChild[0].color=color;
+	rectangle0.color = "transparent";
+}
+
+function changeColorByIdInverse(siblingId,color,rectangleList) {
+	var sibling;
+
+	for (var i = 0; i < rectangleList.length; i++) {
+  	var rectangle = rectangleList[i];
+  	// console.log(rectangle.id);
+    if (rectangle.id == siblingId) {
+    	sibling = rectangle;
+    }
+  }
+
+  console.log("last child color:",sibling.parent.listChild[sibling.parent.listChild.length-1].color);
+
+	sibling.parent.listChild[sibling.parent.listChild.length-1].color=color;
+	rectangle0.color = "transparent";
+}
+
+function move2rectangleById(startId,endId,rectangleList) {
+	transitionAll(rectangleList);
+
+  var parent;
+  for (var i = 0; i<rectangleList.length; i++) {
+  	var rectangle = rectangleList[i];
+    if (rectangle.id == startId) {
+    	parent = rectangle.parent;
+    }
+  }
+
+	var firstLeft = twoPositionsMouseX[0] < twoPositionsMouseX[1];
+	console.log("left to right: " + firstLeft);
+
+	if(firstLeft) {
+		for (var i = 0; i<parent.listChild.length; i++) {
+	  	var child = parent.listChild[i];
+	  	//console.log(child.id);
+	    if (child.id == startId) {
+	  		iterations = parent.listChild.length - (i+1);
+	    }
+	  }
+	} else {
+		for (var i = 0; i<parent.listChild.length; i++) {
+	  	var child = parent.listChild[i];
+	  	//console.log(child.id);
+	    if (child.id == startId) {
+	  		iterations = i;
+	    }
+		}
+  }
+
+  console.log("iterations: " + iterations);
+
+  if (iterations != 0) {
+  	repeat();
+  } else {
+  	svg.selectAll("path").remove();
+
+		calculate(rectangle0,w*h,true);
+		oldRectangleList = pushRectangles(oldRectangleList);
+		drawRectangles(oldRectangleList);
+
+		// console.log("BEFORE - rectangle0 color:" + rectangle0.color);
+		// console.log(parent.id,child.id,endId);
+
+		if(firstLeft) {
+			var oldColor = moveChildById(parent.id,child.id,endId,rectangleList);
+		} else {
+			var oldColor = moveChildByIdInverse(parent.id,child.id,endId,rectangleList);
+		}
+
+		calculate(rectangle0,w*h,true);
+		oldRectangleList = pushRectangles(oldRectangleList);
+		transitionAll(oldRectangleList);
+
+		if(firstLeft) {
+			changeColorById(endId, oldColor,oldRectangleList);
+		} else {
+			changeColorByIdInverse(endId, oldColor,oldRectangleList);
+		}
+		// console.log("old color:" + oldColor);
+		// console.log("AFTER - rectangle0 color:" + rectangle0.color);
+
+
+		calculate(rectangle0,w*h,true);
+		oldRectangleList = pushRectangles(oldRectangleList);
+		drawRectangles(oldRectangleList);
+		// console.log("AFTER 2 - rectangle0 color:" + rectangle0.color);
+		// oldRectangleList.map(a => a.id=="id-1113"?console.log("id-1113", a.color):console.log());
+
+		/*
+		*/
+  }
+
+	function repeat() {
+
+		var child, nextChild;
+
+		if (firstLeft) {
+		  for (var i = 0; i<parent.listChild.length; i++) {
+		    if (parent.listChild[i].id == startId) {
+		    	if ((i+1) != parent.listChild.length) { // NON è l'ultimo
+		  			child = parent.listChild[i];
+		    		nextChild = parent.listChild[i+1];
+		    		parent.listChild[i] = nextChild;
+		    		parent.listChild[i+1] = child;
+		    		break;
+		    	}
+		    }
+		  }
+		} else {
+		  for (var i = parent.listChild.length-1; i>=0; i--) {
+		    if (parent.listChild[i].id == startId) {
+		    	if (i != 0) { // NON è l'ultimo
+		  			child = parent.listChild[i-1];
+		  			console.log(child);
+		    		nextChild = parent.listChild[i];
+		    		console.log(nextChild);
+		    		parent.listChild[i-1] = nextChild;
+		    		parent.listChild[i] = child;
+		    		break;
+		    	}
+		    }
+		  }
+		}
+
+		var r1=d3.select("#" + child.id);
+		var r2=d3.select("#" + nextChild.id);
+		//console.log(r1);
+		//console.log(r2);
+
+		var width1=+child.width;
+		var width2=+nextChild.width;
+		var totalWidth= width1 + width2;
+		var height = +child.height;
+		var area1 = +child.width* +child.height;
+		var area2 = +nextChild.width* +nextChild.height;
+
+		var areaRatio = area2/area1;
+		var heightDiv = (height / (area1 + area2)) * area1;
+		var heightDivInverse = (height / (area1 + area2)) * area2;
+		var triangleBase = 2*area1/height;
+		var triangleBaseInverse = 2*area2/height;
+		var triangleHeight = 2*area1/totalWidth;
+		var trapezioBaseMinore=Math.abs((area2*2-totalWidth*height)/height);
+		var trapezioBaseMinore2=Math.abs((area2*2-totalWidth*height)/totalWidth);
+		var shortTransactionTime=transactionTime*width1/height;
+		var delayTime=shortTransactionTime*4+transactionTime+transactionTimMovePoint*2-20;
+
+		if(firstLeft) {
+			console.log("firstLeft: "+firstLeft+" area1: "+area1+" area2: "+area2);
+			if(area1 <= area2) {
+				r1.moveToFront();
+
+				r2
+				.transition().duration(10).ease("linear").attr("d", function(d) {
+					d.expandSecondRectangle((totalWidth-d.width));return d.line; })
+				.transition().delay(delayTime).ease("linear").attr("d", function(d) {d.lastRectangle(-width1);return d.line; });
+
+				return r1
+				.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.setFirstTriangle(triangleBase); return d.line; })
+				.transition().duration(transactionTimMovePoint).ease("linear").attr("d", function(d) {d.setFirstPointBack(triangleBase); return d.line; })
+				.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.setSecondTriangle(totalWidth,triangleHeight); return d.line; })
+				//.transition().duration(transactionTime).ease("linear").attr("d", function(d) {d.setTopRectangle(totalWidth,heightDiv); return d.line; })
+				.transition().duration(transactionTime).ease("linear").attr("d", function(d) {d.setThirdTriangle(totalWidth,triangleHeight); return d.line; })
+				.transition().duration(transactionTimMovePoint).ease("linear").attr("d", function(d) {d.setSecondPointBack(totalWidth,triangleHeight); return d.line; })
+				.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.setFourthTriangle((totalWidth-triangleBase),totalWidth); return d.line; })
+				.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.lastRectangle((totalWidth- +width1)); return d.line; })
+				.each("end", postTransitions);
+			} else {
+				r2.moveToFront();
+
+				r1
+				.transition().duration(10).ease("linear").attr("d", function(d) {
+					d.expandFirstRectangle((totalWidth));return d.line; })
+				.transition().delay(delayTime).ease("linear").attr("d", function(d) {d.lastRectangle(width2);return d.line; });
+
+				r2
+				.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.setFirstInverseTriangle(-triangleBaseInverse); return d.line; })
+				.transition().duration(transactionTimMovePoint).ease("linear").attr("d", function(d) {d.setFirstInversePointBack(-triangleBaseInverse); return d.line; })
+				.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.setSecondInverseTriangle(totalWidth,trapezioBaseMinore); return d.line; })
+				.transition().duration(transactionTime).ease("linear").attr("d", function(d) {d.setThirdInverseTriangle(totalWidth,heightDivInverse); return d.line; })
+				.transition().duration(transactionTimMovePoint).ease("linear").attr("d", function(d) {d.setSecondInversePointBack(totalWidth,heightDivInverse); return d.line; })
+				.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.setFourthInverseTriangle(totalWidth,triangleBaseInverse,heightDivInverse); return d.line; })
+				.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.lastRectangle(-width1); return d.line; })
+				.each("end", postTransitions);
+			}
+		} else {
+			console.log("firstRight: "+firstLeft+" area1: "+area1+" area2: "+area2);
+			if(area1 <= area2){
+				r1.moveToFront();
+
+				r2
+				.transition().duration(10).ease("linear").attr("d", function(d) {
+					d.expandSecondRectangle((totalWidth-d.width));return d.line; })
+				.transition().delay(delayTime).ease("linear").attr("d", function(d) {d.lastRectangle(-width1);return d.line; });
+
+				return r1
+				.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.setFirstTriangle(triangleBase); return d.line; })
+				.transition().duration(transactionTimMovePoint).ease("linear").attr("d", function(d) {d.setFirstPointBack(triangleBase); return d.line; })
+				.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.setSecondTriangle(totalWidth,triangleHeight); return d.line; })
+				//.transition().duration(transactionTime).ease("linear").attr("d", function(d) {d.setTopRectangle(totalWidth,heightDiv); return d.line; })
+				.transition().duration(transactionTime).ease("linear").attr("d", function(d) {d.setThirdTriangle(totalWidth,triangleHeight); return d.line; })
+				.transition().duration(transactionTimMovePoint).ease("linear").attr("d", function(d) {d.setSecondPointBack(totalWidth,triangleHeight); return d.line; })
+				.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.setFourthTriangle((totalWidth-triangleBase),totalWidth); return d.line; })
+				.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.lastRectangle((totalWidth- +width1)); return d.line; })
+				.each("end", postTransitionsInverse);
+			} else {
+				r2.moveToFront();
+
+				r1
+				.transition().duration(10).ease("linear").attr("d", function(d) {
+					d.expandFirstRectangle((totalWidth));return d.line; })
+				.transition().delay(delayTime).ease("linear").attr("d", function(d) {d.lastRectangle(width2);return d.line; });
+
+				r2
+				.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.setFirstInverseTriangle(-triangleBaseInverse); return d.line; })
+				.transition().duration(transactionTimMovePoint).ease("linear").attr("d", function(d) {d.setFirstInversePointBack(-triangleBaseInverse); return d.line; })
+				.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.setSecondInverseTriangle(totalWidth,trapezioBaseMinore); return d.line; })
+				.transition().duration(transactionTime).ease("linear").attr("d", function(d) {d.setThirdInverseTriangle(totalWidth,heightDivInverse); return d.line; })
+				.transition().duration(transactionTimMovePoint).ease("linear").attr("d", function(d) {d.setSecondInversePointBack(totalWidth,heightDivInverse); return d.line; })
+				.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.setFourthInverseTriangle(totalWidth,triangleBaseInverse,heightDivInverse); return d.line; })
+				.transition().duration(shortTransactionTime).ease("linear").attr("d", function(d) {d.lastRectangle(-width1); return d.line; })
+				.each("end", postTransitionsInverse);
+			}
+		}
+
+		function postTransitions() {
+			iterations--;
+			console.log(iterations);
+
+			if(iterations != 0) {
+				 repeat();
+			} else {
+				svg.selectAll("path").remove();
+
+				calculate(rectangle0,w*h,true);
+				oldRectangleList = pushRectangles(oldRectangleList);
+				drawRectangles(oldRectangleList);
+
+				// console.log(parent.id,child.id,endId);
+				var oldColor = moveChildById(parent.id,child.id,endId,rectangleList);
+				console.log(oldColor);
+
+				calculate(rectangle0,w*h,true);
+				oldRectangleList = pushRectangles(oldRectangleList);
+				transitionAll(oldRectangleList);
+
+				changeColorById(endId, oldColor,rectangleList);
+				// transitionAll(oldRectangleList);
+
+				/*
+				console.log(oldColor);
+				drawRectangles(oldRectangleList);
+				*/
+			}
+		}
+
+
+		function postTransitionsInverse() {
+			iterations--;
+			console.log(iterations);
+
+			if(iterations != 0) {
+				 repeat();
+			} else {
+				svg.selectAll("path").remove();
+
+				calculate(rectangle0,w*h,true);
+				oldRectangleList = pushRectangles(oldRectangleList);
+				drawRectangles(oldRectangleList);
+
+				// console.log(parent.id,child.id,endId);
+				var oldColor = moveChildByIdInverse(parent.id,child.id,endId,rectangleList);
+
+				calculate(rectangle0,w*h,true);
+				oldRectangleList = pushRectangles(oldRectangleList);
+				transitionAll(oldRectangleList);
+
+				changeColorByIdInverse(endId, oldColor,rectangleList);
+				// transitionAll(oldRectangleList);
+			}
+
+		}
+
+	}
+
+}
+
+</script>
+</body>
+</html>
